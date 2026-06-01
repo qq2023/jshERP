@@ -1,25 +1,27 @@
-name: Build jshERP-boot JAR (JDK8 Maven)
+name: Build & Release jshERP-boot JAR (JDK8)
 
+# 触发条件：1. 推送v开头的tag（如v1.0.0）；2. 手动触发
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    tags:
+      - 'v*'  # 匹配 v1.0.0、v2.1.5 等版本标签
   workflow_dispatch:  # 支持手动运行
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
-    # 所有命令默认进入 jshERP-boot 目录
     defaults:
       run:
-        working-directory: ./jshERP-boot
+        working-directory: ./jshERP-boot  # 固定到 Maven 项目目录
 
     steps:
+      # 1. 拉取代码（包含完整历史，用于版本信息）
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取所有历史提交，确保版本信息完整
 
-      # 配置 JDK8 + 阿里云 Maven 镜像（解决依赖慢/超时）
+      # 2. 配置 JDK8 + 阿里云 Maven 镜像
       - name: Set up JDK 8
         uses: actions/setup-java@v4
         with:
@@ -37,13 +39,34 @@ jobs:
               </mirrors>
             </settings>
 
-      # 直接使用系统 mvn 打包（不再依赖 mvnw），跳过测试
+      # 3. Maven 打包（跳过测试，加快速度）
       - name: Package with Maven
         run: mvn clean package -DskipTests
 
-      # 上传打包好的 JAR
-      - name: Upload JAR Artifact
-        uses: actions/upload-artifact@v4
+      # 4. 提取版本号（从 pom.xml 读取，用于 Release 命名）
+      - name: Extract version from pom.xml
+        id: extract_version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        working-directory: ./jshERP-boot
+
+      # 5. 创建并上传 Release（自动关联 tag，上传 JAR）
+      - name: Create and upload Release
+        uses: softprops/action-gh-release@v1  # 主流 Release Action
         with:
-          name: jshERP-boot-jar
-          path: jshERP-boot/target/*.jar
+          # Release 标题与标签名一致
+          name: Release ${{ github.ref_name }}
+          # 自动生成 Release 说明（列出本次 tag 包含的提交）
+          generate_release_notes: true
+          # 上传 JAR 文件（路径对应 jshERP-boot/target）
+          files: |
+            jshERP-boot/target/*.jar
+            jshERP-boot/target/*.war  # 若项目生成 war 也一并上传
+          # 是否设为草稿（false 直接发布，true 需手动确认）
+          draft: false
+          # 是否设为预发布（false 正式版，true 测试版）
+          prerelease: false
+        env:
+          # 自动获取的 GitHub 令牌，无需手动配置
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

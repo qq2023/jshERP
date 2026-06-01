@@ -10,16 +10,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # ========== 核心修改：指定工作目录为 jshERP-boot ==========
+    # 所有命令默认进入 jshERP-boot 目录
     defaults:
       run:
         working-directory: ./jshERP-boot
 
     steps:
-      - name: Checkout full code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 配置 JDK8 + 阿里云 Maven 镜像
+      # 配置 JDK8 + 阿里云 Maven 镜像（解决依赖慢/超时）
       - name: Set up JDK 8
         uses: actions/setup-java@v4
         with:
@@ -37,15 +37,11 @@ jobs:
               </mirrors>
             </settings>
 
-      # 赋予 mvnw 执行权限（Linux 环境必加，防止权限报错）
-      - name: Grant execute permission for mvnw
-        run: chmod +x ./mvnw
-
-      # Maven 打包，跳过测试
+      # 直接使用系统 mvn 打包（不再依赖 mvnw），跳过测试
       - name: Package with Maven
-        run: ./mvnw clean package -DskipTests
+        run: mvn clean package -DskipTests
 
-      # 上传 JAR 产物（路径对应 jshERP-boot 下的 target）
+      # 上传打包好的 JAR
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:

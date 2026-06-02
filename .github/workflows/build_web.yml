@@ -1,0 +1,39 @@
+name: Build jsherp-web Node Project
+
+# 触发时机：push到main/master、PR、手动触发
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # 支持网页手动点击运行action
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 使用ubuntu虚拟机
+    steps:
+      # 1. 拉取源码
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. 配置Node.js版本（根据项目需求改版本，如16/18/20）
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm' # 缓存node_modules加速构建
+          cache-dependency-path: jsherp-web/package-lock.json # 指定lock文件位置
+
+      # 3. 进入jsherp-web目录执行安装&编译
+      - name: Install dependencies & Build
+        working-directory: ./jsherp-web # 关键：切换工作目录到目标文件夹
+        run: |
+          npm install
+          npm run build # 你的package.json中的build脚本，打包后产物一般在dist/build目录
+
+      # 4. 上传打包产物到Action Artifacts（下载压缩包）
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsherp-web-dist
+          path: jsherp-web/dist # 修改为你项目打包输出目录(大多dist，少数build/out)

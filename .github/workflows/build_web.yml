@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm' # 缓存node_modules加速构建
           cache-dependency-path: jsherp-web/package-lock.json # 指定lock文件位置
 

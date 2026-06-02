@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies & Build
         working-directory: ./jshERP-web # 关键：切换工作目录到目标文件夹
         run: |
-          npm install
+          npm install --legacy-peer-deps
           npm run build # 你的package.json中的build脚本，打包后产物一般在dist/build目录
 
       # 4. 上传打包产物到Action Artifacts（下载压缩包）
